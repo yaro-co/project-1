@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena Game</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+        canvas { display: block; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const ws = new WebSocket('ws://localhost:3000');
+
+        // Player object
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            width: 50,
+            height: 50,
+            color: 'blue',
+            speed: 5,
+            health: 100
+        };
+
+        const otherPlayer = {
+            x: canvas.width / 2 + 100,
+            y: canvas.height / 2 + 100,
+            width: 50,
+            height: 50,
+            color: 'red'
+        };
+
+        let items = [];
+
+        // Handle WebSocket message (receive data from server)
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'move') {
+                otherPlayer.x = data.x;
+                otherPlayer.y = data.y;
+            }
+        };
+
+        // Handle player movement
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') player.x -= player.speed;
+            if (e.key === 'ArrowRight') player.x += player.speed;
+            if (e.key === 'ArrowUp') player.y -= player.speed;
+            if (e.key === 'ArrowDown') player.y += player.speed;
+
+            // Send player position to server
+            const data = {
+                type: 'move',
+                x: player.x,
+                y: player.y
+            };
+            ws.send(JSON.stringify(data));
+        });
+
+        // Draw game state
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw player and other player
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = otherPlayer.color;
+            ctx.fillRect(otherPlayer.x, otherPlayer.y, otherPlayer.width, otherPlayer.height);
+
+            // Draw health bars
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.x, player.y - 10, player.width * (player.health / 100), 5);
+            ctx.fillStyle = 'red';
+            ctx.fillRect(otherPlayer.x, otherPlayer.y - 10, otherPlayer.width * (otherPlayer.health / 100), 5);
+        }
+
+        // Game loop
+        function gameLoop() {
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();  // Start the game loop
+    </script>
+</body>
+</html>
